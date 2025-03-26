@@ -75,7 +75,7 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: python std_scripts/ml_ops_pipeline/wait_for_completion.py
+        run: python std_scripts/ml_ops_pipeline/wait_for_job.py
 
       - name: ✅ Validate Training Metrics
         env:
@@ -119,7 +119,7 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: python std_scripts/ml_ops_pipeline/wait_for_completion.py
+        run: python std_scripts/ml_ops_pipeline/wait_for_job.py
 
       - name: ✅ Validate Inference Metrics
         env:
