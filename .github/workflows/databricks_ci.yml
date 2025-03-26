@@ -1,0 +1,160 @@
+name: Databricks CI Pipeline
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  checkout-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+  static-code-analysis:
+    runs-on: ubuntu-latest
+    needs: checkout-code
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🧪 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install nbqa and flake8
+        run: pip install nbqa flake8
+
+      - name: 🔍 Run nbqa flake8 on notebooks
+        run: |
+          nbqa flake8 . || echo "Static analysis warnings only (non-blocking)"
+
+  train-and-validate:
+    runs-on: ubuntu-latest
+    needs: static-code-analysis
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 📥 Clone std_ml_ops_pipeline_components repo
+        run: git clone https://github.com/Ashoke238/std_ml_ops_pipeline_components.git std_scripts
+
+      - name: 🧪 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install dependencies
+        run: pip install -r std_scripts/requirements.txt
+
+      - name: 🧪 Set ENV and derive config path
+        run: echo "CONFIG_PATH=mlops_config/mlops_config_${{ github.ref_name }}.json" >> $GITHUB_ENV
+
+      - name: 🔧 Extract Job IDs from Config
+        id: extract_ids
+        run: |
+          TRAIN_JOB_ID=$(jq -r '.train_job_id' $CONFIG_PATH)
+          INFER_JOB_ID=$(jq -r '.inference_job_id' $CONFIG_PATH)
+          echo "TRAIN_JOB_ID=$TRAIN_JOB_ID" >> $GITHUB_ENV
+          echo "INFER_JOB_ID=$INFER_JOB_ID" >> $GITHUB_ENV
+
+      - name: 🚀 Trigger Databricks Train Job
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          JOB_ID: ${{ env.TRAIN_JOB_ID }}
+          RUN_ID_FILE: train_run_id.txt
+        run: python std_scripts/ml_ops_pipeline/trigger_job.py
+
+      - name: 🔁 Export RUN_ID for train
+        run: echo "RUN_ID=$(cat train_run_id.txt)" >> $GITHUB_ENV
+
+      - name: ⏳ Wait for Databricks Train Job Completion
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: python std_scripts/ml_ops_pipeline/wait_for_job.py
+
+      - name: ✅ Validate Training Metrics
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          USER_EMAIL: ${{ secrets.MLFLOW_USER_EMAIL }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: python std_scripts/ml_ops_pipeline/validate_metrics.py
+
+  inference-and-validate:
+    runs-on: ubuntu-latest
+    needs: train-and-validate
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 📥 Clone std_ml_ops_pipeline_components repo
+        run: git clone https://github.com/Ashoke238/std_ml_ops_pipeline_components.git std_scripts
+
+      - name: 🧪 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install dependencies
+        run: pip install -r std_scripts/requirements.txt
+
+      - name: 🧪 Set ENV and derive config path
+        run: echo "CONFIG_PATH=mlops_config/mlops_config_${{ github.ref_name }}.json" >> $GITHUB_ENV
+
+      - name: 🔧 Extract Job IDs from Config
+        id: extract_ids
+        run: |
+          TRAIN_JOB_ID=$(jq -r '.train_job_id' $CONFIG_PATH)
+          INFER_JOB_ID=$(jq -r '.inference_job_id' $CONFIG_PATH)
+          echo "TRAIN_JOB_ID=$TRAIN_JOB_ID" >> $GITHUB_ENV
+          echo "INFER_JOB_ID=$INFER_JOB_ID" >> $GITHUB_ENV
+
+      - name: 🚀 Trigger Databricks Inference Job
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          JOB_ID: ${{ env.INFER_JOB_ID }}
+          RUN_ID_FILE: inference_run_id.txt
+        run: python std_scripts/ml_ops_pipeline/trigger_job.py
+
+      - name: 🔁 Export RUN_ID for inference
+        run: echo "RUN_ID=$(cat inference_run_id.txt)" >> $GITHUB_ENV
+
+      - name: ⏳ Wait for Inference Job Completion
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: python std_scripts/ml_ops_pipeline/wait_for_job.py
+
+      - name: ✅ Validate Inference Metrics
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          USER_EMAIL: ${{ secrets.MLFLOW_USER_EMAIL }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: python std_scripts/ml_ops_pipeline/validate_inference_metrics.py
+
+  promote-to-main:
+    runs-on: ubuntu-latest
+    needs: inference-and-validate
+    if: github.ref == 'refs/heads/dev'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🧪 Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - name: 🚀 Create & Merge PR to main
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          gh pr create --base main --head dev --title "Auto promotion from dev to main" --body "✅ All checks passed. Promoting to main." || echo "PR already exists or failed to create."
+          gh pr merge dev --merge --admin || echo "Merge failed or already done."
