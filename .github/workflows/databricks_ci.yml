@@ -84,7 +84,7 @@ jobs:
           USER_EMAIL: ${{ secrets.MLFLOW_USER_EMAIL }}
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: python std_scripts/ml_ops_pipeline/validate_metric.py
+        run: python std_scripts/ml_ops_pipeline/validate_metrics.py
 
   inference-and-validate:
     runs-on: ubuntu-latest
@@ -128,7 +128,7 @@ jobs:
           USER_EMAIL: ${{ secrets.MLFLOW_USER_EMAIL }}
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: python std_scripts/ml_ops_pipeline/validate_inference.py
+        run: python std_scripts/ml_ops_pipeline/validate_inference_metrics.py
 
   promote-to-main:
     runs-on: ubuntu-latest
