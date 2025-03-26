@@ -1,5 +1,8 @@
 {
     "repo_name": "model_train_infer",
-    "branch_name": "dev"
+    "branch_name": "dev",
+    "train_job_id": 150430378558626,
+    "inference_job_id": 643177853687692
+
   }
   
