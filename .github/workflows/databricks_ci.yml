@@ -104,6 +104,17 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install -r std_scripts/requirements.txt
 
+      - name: 🧪 Set ENV and derive config path
+        run: echo "CONFIG_PATH=mlops_config/mlops_config_${{ github.ref_name }}.json" >> $GITHUB_ENV
+
+      - name: 🔧 Extract Job IDs from Config
+        id: extract_ids
+        run: |
+          TRAIN_JOB_ID=$(jq -r '.train_job_id' $CONFIG_PATH)
+          INFER_JOB_ID=$(jq -r '.inference_job_id' $CONFIG_PATH)
+          echo "TRAIN_JOB_ID=$TRAIN_JOB_ID" >> $GITHUB_ENV
+          echo "INFER_JOB_ID=$INFER_JOB_ID" >> $GITHUB_ENV
+
       - name: 🚀 Trigger Databricks Inference Job
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
