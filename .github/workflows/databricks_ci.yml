@@ -56,7 +56,7 @@ jobs:
         id: extract_ids
         run: |
           TRAIN_JOB_ID=$(jq -r '.train_job_id' $CONFIG_PATH)
-          INFER_JOB_ID=$(jq -r '.inference_job_id' $CONFIG_PATH)
+          INFER_JOB_ID=$(jq -r '.infer_job_id' $CONFIG_PATH)
           echo "TRAIN_JOB_ID=$TRAIN_JOB_ID" >> $GITHUB_ENV
           echo "INFER_JOB_ID=$INFER_JOB_ID" >> $GITHUB_ENV
 
@@ -111,7 +111,7 @@ jobs:
         id: extract_ids
         run: |
           TRAIN_JOB_ID=$(jq -r '.train_job_id' $CONFIG_PATH)
-          INFER_JOB_ID=$(jq -r '.inference_job_id' $CONFIG_PATH)
+          INFER_JOB_ID=$(jq -r '.infer_job_id' $CONFIG_PATH)
           echo "TRAIN_JOB_ID=$TRAIN_JOB_ID" >> $GITHUB_ENV
           echo "INFER_JOB_ID=$INFER_JOB_ID" >> $GITHUB_ENV
 
