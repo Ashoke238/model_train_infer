@@ -39,19 +39,38 @@ model_train_infer/
 ## 📊 Notebooks Explained
 
 ### 🌟 `Demo_train_Notebook1.py`
-- Loads a classification dataset.
-- Performs feature engineering.
-- Trains a simple classification model (e.g., logistic regression or decision tree).
-- Logs metrics & parameters via MLflow.
-- Registers the model to MLflow model registry.
-- Persists any relevant artifacts.
+This notebook is the foundation of the training pipeline. Here's what it does:
+- **Data Ingestion**: Loads a sample classification dataset (e.g., from sklearn or public datasets).
+- **Feature Engineering**: Applies basic preprocessing techniques such as scaling, encoding, and splitting into train/test sets.
+- **Model Training**: Trains a classification model like Logistic Regression or Decision Tree using scikit-learn.
+- **MLflow Logging**:
+  - Parameters (model type, hyperparameters)
+  - Metrics (accuracy, precision, recall, etc.)
+  - Tags (project, run type, version info)
+- **Model Registration**:
+  - Uses MLflow to register the model to the **Unity Catalog-based model registry**.
+  - The model path is constructed using user email, repo name, and environment to ensure **uniqueness**.
+    - Example: `/Users/<email>/models/<repo_name>_<env>`
+- **Artifact Storage**:
+  - Artifacts and logs are saved in the Unity Catalog workspace.
+  - Tracking is configured to be environment-aware based on the branch (dev/main → dev/prod).
 
 ### ⚖️ `Demo_inference_Notebook1.py`
-- Loads a previously registered model from MLflow.
-- Loads test data.
-- Performs batch inference.
-- Saves predictions to Delta table or Databricks workspace directory.
-- Logs inference metadata (optional).
+This notebook runs batch inference based on the most recently trained and registered model:
+- **Model Loading**:
+  - Loads the latest version of the model from the Unity Catalog model registry using MLflow APIs.
+- **Data Ingestion**:
+  - Loads inference/test data (can be real-time or batch source).
+- **Inference Execution**:
+  - Applies the trained model to generate predictions.
+  - Includes timestamp and metadata tracking.
+- **Output Storage**:
+  - Inference results are stored to a **Delta table** or output directory within Unity Catalog.
+  - The naming ensures no overwrite and supports historical retention.
+- **MLflow Logging**:
+  - Inference metadata like prediction distribution, feature importance (if applicable), or run ID.
+
+Both notebooks are designed for **CI/CD compatibility**, avoiding notebook widgets, and are compatible with both interactive and non-interactive Databricks Jobs execution.
 
 ---
 
